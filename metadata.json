@@ -1,0 +1,5 @@
+{
+  "name": "Controle de Produção de Teares",
+  "description": "Um aplicativo web interativo para controle diário de produção de uma linha de teares, permitindo entrada de dados, cálculos automáticos de eficiência e geração de relatórios.",
+  "requestFramePermissions": []
+}
