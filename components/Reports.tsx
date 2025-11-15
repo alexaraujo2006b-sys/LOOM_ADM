@@ -104,7 +104,7 @@ const Reports: React.FC = () => {
     const handleExport = () => {
         const operatorName = operators.find(op => op.id === selectedOperatorId)?.name || 'N/A';
         const formattedDate = new Date(selectedDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
-        exportOperatorReportToPDF(operatorName, formattedDate, reportData.entries, reportData.totalProduced);
+        exportOperatorReportToPDF(operatorName, formattedDate, reportData.entries, reportData.totalProduced, settings);
     };
 
     const handlePreview = () => {

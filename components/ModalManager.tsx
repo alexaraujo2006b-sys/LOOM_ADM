@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { formatDuration } from '../utils/time';
-import { Operator, Product, ProductionEntry } from '../types';
+import { Operator, Product, ProductionEntry, Loom, ITHReason, ITHIntervention, FabricComponent, User, UserRole } from '../types';
 import LoomDetailsModal from './LoomDetailsModal';
 import PDFPreviewModal from './PDFPreviewModal';
+import FullScreenLoomCardModal from './FullScreenLoomCardModal';
 
 const CloseIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -171,7 +172,7 @@ const LogProductionModal: React.FC = () => {
                                 <input 
                                     type="number" 
                                     step="any"
-                                    ref={el => inputRefs.current[index] = el}
+                                    ref={el => { inputRefs.current[index] = el; }}
                                     value={readings[loom.id]?.reading || ''} 
                                     onChange={e => handleInputChange(loom.id, e.target.value)}
                                     onKeyDown={e => handleKeyDown(e, index)}
@@ -331,6 +332,8 @@ const EndShiftModal: React.FC = () => {
 const AddEditOperatorModal: React.FC = () => {
     const { modal, addOperator, updateOperator, closeModal, settings } = useAppContext();
     const [name, setName] = useState('');
+    const [employeeId, setEmployeeId] = useState('');
+    const [role, setRole] = useState('');
     const [shiftName, setShiftName] = useState(settings.shifts[0]?.name || '');
     const operator = modal.data?.operator as Operator | undefined;
 
@@ -338,19 +341,21 @@ const AddEditOperatorModal: React.FC = () => {
         if (operator) {
             setName(operator.name);
             setShiftName(operator.shiftName);
+            setEmployeeId(operator.employeeId);
+            setRole(operator.role);
         }
     }, [operator]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if(!name.trim() || !shiftName) {
-            alert('O nome e o turno do operador são obrigatórios.');
+        if(!name.trim() || !shiftName || !employeeId.trim() || !role.trim()) {
+            alert('Todos os campos são obrigatórios.');
             return;
         }
         if(operator) {
-            updateOperator(operator.id, name, shiftName);
+            updateOperator(operator.id, name, shiftName, employeeId, role);
         } else {
-            addOperator(name, shiftName);
+            addOperator(name, shiftName, employeeId, role);
         }
         closeModal();
     }
@@ -361,6 +366,14 @@ const AddEditOperatorModal: React.FC = () => {
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Nome do Operador</label>
                     <input type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 p-2 w-full border border-gray-300 rounded-md shadow-sm" required autoFocus />
+                </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700">Matrícula</label>
+                    <input type="text" value={employeeId} onChange={e => setEmployeeId(e.target.value)} className="mt-1 p-2 w-full border border-gray-300 rounded-md shadow-sm" required />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Função</label>
+                    <input type="text" value={role} onChange={e => setRole(e.target.value)} className="mt-1 p-2 w-full border border-gray-300 rounded-md shadow-sm" required />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Turno Principal</label>
@@ -383,46 +396,126 @@ const AddEditOperatorModal: React.FC = () => {
 const AddEditProductModal: React.FC = () => {
     const { modal, addProduct, updateProduct, closeModal } = useAppContext();
     const product = modal.data?.product as Product | undefined;
-    const [name, setName] = useState('');
-    const [goal, setGoal] = useState('');
+    const [formState, setFormState] = useState<Omit<Product, 'id'>>({
+        name: '',
+        productCode: '',
+        standardRpm: 0,
+        threadDensity: 0,
+        grammageM2: 0,
+        fabricWidthM: 0,
+        composition: {
+            weft: { dtex: 0, color: '#FFFFFF' },
+            warp: { dtex: 0, color: '#FFFFFF' },
+            markingWarp: { dtex: 0, color: '#FFFFFF' },
+        }
+    });
 
     useEffect(() => {
         if (product) {
-            setName(product.name);
-            setGoal(String(product.hourlyProductionGoal));
+            setFormState(product);
         }
     }, [product]);
+    
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value, type } = e.target;
+        setFormState(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) || 0 : value }));
+    }
+    
+    const handleCompositionChange = (type: 'weft' | 'warp' | 'markingWarp', field: keyof FabricComponent, value: string | number) => {
+        setFormState(prev => ({
+            ...prev,
+            composition: {
+                ...prev.composition,
+                [type]: {
+                    ...prev.composition[type],
+                    [field]: typeof value === 'string' && field !== 'color' ? parseFloat(value) || 0 : value,
+                }
+            }
+        }));
+    }
+
+    const calculatedGoal = useMemo(() => {
+        const { standardRpm, threadDensity } = formState;
+        if (!isNaN(standardRpm) && !isNaN(threadDensity) && threadDensity > 0) {
+            return (standardRpm * 60) / (threadDensity * 10);
+        }
+        return 0;
+    }, [formState.standardRpm, formState.threadDensity]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const numGoal = parseFloat(goal);
-        if(!name.trim() || isNaN(numGoal) || numGoal <= 0) {
-            alert('Preencha todos os campos com valores válidos.');
+        if (!formState.name.trim() || !formState.productCode.trim() || formState.standardRpm <= 0 || formState.threadDensity <= 0 || formState.grammageM2 <= 0 || formState.fabricWidthM <= 0) {
+            alert('Preencha todos os campos principais com valores válidos e positivos.');
             return;
         }
-        
-        const productData = { name, hourlyProductionGoal: numGoal };
+
         if(product) {
-            updateProduct({ ...product, ...productData });
+            updateProduct({ ...product, ...formState });
         } else {
-            addProduct(productData);
+            addProduct(formState);
         }
         closeModal();
     }
+    const inputStyle = "mt-1 p-2 w-full border border-gray-300 rounded-md shadow-sm";
+    const labelStyle = "block text-sm font-medium text-gray-700";
 
     return (
-        <ModalWrapper title={product ? 'Editar Produto' : 'Adicionar Produto'}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Nome do Produto</label>
-                    <input type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 p-2 w-full border border-gray-300 rounded-md shadow-sm" required autoFocus />
+        <ModalWrapper title={product ? 'Editar Produto' : 'Adicionar Produto'} size="2xl">
+            <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Basic Info */}
+                <fieldset className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label className={labelStyle}>Nome do Produto</label><input type="text" name="name" value={formState.name} onChange={handleChange} className={inputStyle} required autoFocus /></div>
+                    <div><label className={labelStyle}>Código do Produto</label><input type="text" name="productCode" value={formState.productCode} onChange={handleChange} className={inputStyle} required /></div>
+                </fieldset>
+                
+                 {/* Technical Specs */}
+                <fieldset className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label className={labelStyle}>RPM Padrão</label><input type="number" name="standardRpm" value={formState.standardRpm} onChange={handleChange} className={inputStyle} required /></div>
+                    <div><label className={labelStyle}>Fios por 10cm</label><input type="number" name="threadDensity" value={formState.threadDensity} onChange={handleChange} className={inputStyle} required /></div>
+                    <div><label className={labelStyle}>Gramatura (g/m²)</label><input type="number" name="grammageM2" value={formState.grammageM2} onChange={handleChange} className={inputStyle} required /></div>
+                    <div><label className={labelStyle}>Largura do Tecido (m)</label><input type="number" step="0.01" name="fabricWidthM" value={formState.fabricWidthM} onChange={handleChange} className={inputStyle} required /></div>
+                </fieldset>
+
+                {/* Composition */}
+                <fieldset>
+                    <legend className="text-base font-medium text-gray-900 mb-2 border-b pb-1">Composição do Tecido</legend>
+                    <div className="text-xs text-gray-500 mb-3 -mt-2">Taxa de consumo padrão: Trama 48% e Urdume 52% do peso do tecido.</div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2">
+                        {/* Weft */}
+                        <div>
+                            <h4 className="font-medium text-sm text-center mb-1">Trama</h4>
+                            <div className="flex gap-2">
+                                <input type="number" placeholder="DTEX" value={formState.composition.weft.dtex} onChange={e => handleCompositionChange('weft', 'dtex', e.target.value)} className={`${inputStyle} mt-0 p-1 text-sm`} />
+                                <input type="color" value={formState.composition.weft.color} onChange={e => handleCompositionChange('weft', 'color', e.target.value)} className="p-0.5 h-8 w-10 border border-gray-300 rounded-md" />
+                            </div>
+                        </div>
+                        {/* Warp */}
+                        <div>
+                           <h4 className="font-medium text-sm text-center mb-1">Urdume</h4>
+                            <div className="flex gap-2">
+                                <input type="number" placeholder="DTEX" value={formState.composition.warp.dtex} onChange={e => handleCompositionChange('warp', 'dtex', e.target.value)} className={`${inputStyle} mt-0 p-1 text-sm`} />
+                                <input type="color" value={formState.composition.warp.color} onChange={e => handleCompositionChange('warp', 'color', e.target.value)} className="p-0.5 h-8 w-10 border border-gray-300 rounded-md" />
+                            </div>
+                        </div>
+                         {/* Marking Warp */}
+                        <div>
+                            <h4 className="font-medium text-sm text-center mb-1">Urdume Marcação</h4>
+                            <div className="flex gap-2">
+                                <input type="number" placeholder="DTEX" value={formState.composition.markingWarp.dtex} onChange={e => handleCompositionChange('markingWarp', 'dtex', e.target.value)} className={`${inputStyle} mt-0 p-1 text-sm`} />
+                                <input type="color" value={formState.composition.markingWarp.color} onChange={e => handleCompositionChange('markingWarp', 'color', e.target.value)} className="p-0.5 h-8 w-10 border border-gray-300 rounded-md" />
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                {/* Calculated Goal */}
+                <div className="text-center p-3 bg-gray-100 rounded-md">
+                    <p className="text-sm text-gray-600">Meta de Produção Calculada</p>
+                    <p className="font-bold text-lg text-brand-green">{calculatedGoal.toFixed(2)} m/h</p>
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Meta de Produção (m/h)</label>
-                    <input type="number" value={goal} onChange={e => setGoal(e.target.value)} className="mt-1 p-2 w-full border border-gray-300 rounded-md shadow-sm" required />
-                </div>
-                 <div className="flex justify-end pt-2">
-                    <button type="submit" className="bg-brand-green text-white px-4 py-2 rounded-lg hover:bg-brand-light-green transition">
+                
+                 <div className="flex justify-end pt-4">
+                    <button type="submit" className="bg-brand-green text-white px-6 py-2 rounded-lg hover:bg-brand-light-green transition font-semibold">
                         {product ? 'Salvar Alterações' : 'Adicionar Produto'}
                     </button>
                 </div>
@@ -432,86 +525,276 @@ const AddEditProductModal: React.FC = () => {
 }
 
 const EditProductionEntryModal: React.FC = () => {
-    const { modal, updateProductionEntry, closeModal } = useAppContext();
-    const entry = modal.data?.entry as ProductionEntry | undefined;
-    const [reading, setReading] = useState('');
-
-    useEffect(() => {
-        if (entry) {
-            setReading(String(entry.reading));
-        }
-    }, [entry]);
+    const { modal, updateProductionEntry, looms } = useAppContext();
+    const entry = modal.data.entry as ProductionEntry;
+    const [reading, setReading] = useState(entry.reading.toString());
+    const [timestamp, setTimestamp] = useState(new Date(entry.timestamp).toISOString().slice(0, 16));
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const numReading = parseFloat(reading);
-        if (!entry || isNaN(numReading) || numReading < 0) {
-            alert('Por favor, insira um valor de leitura válido.');
+        const readingNum = parseFloat(reading);
+        if (isNaN(readingNum) || readingNum < 0) {
+            alert("Leitura inválida.");
             return;
         }
-        updateProductionEntry({ ...entry, reading: numReading });
-        closeModal();
-    };
+        updateProductionEntry({
+            ...entry,
+            reading: readingNum,
+            timestamp: new Date(timestamp).getTime(),
+        });
+    }
 
-    if (!entry) return null;
+    const loomCode = looms.find(l => l.id === entry.loomId)?.code || 'N/A';
 
     return (
-        <ModalWrapper title={`Editar Leitura do Tear`}>
+        <ModalWrapper title={`Editar Lançamento - Tear ${loomCode}`}>
             <form onSubmit={handleSubmit} className="space-y-4">
-                 <div>
+                <div>
                     <label className="block text-sm font-medium text-gray-700">Leitura (m)</label>
-                    <input
-                        type="number"
-                        step="any"
-                        value={reading}
-                        onChange={e => setReading(e.target.value)}
-                        className="mt-1 p-2 w-full border border-gray-300 rounded-md shadow-sm"
-                        required
-                        autoFocus
-                    />
+                    <input type="number" step="any" value={reading} onChange={e => setReading(e.target.value)} className="mt-1 p-2 w-full border rounded-md" required autoFocus />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Horário</label>
+                    <input type="datetime-local" value={timestamp} onChange={e => setTimestamp(e.target.value)} className="mt-1 p-2 w-full border rounded-md" required />
                 </div>
                 <div className="flex justify-end pt-2">
-                    <button type="submit" className="bg-brand-green text-white px-4 py-2 rounded-lg hover:bg-brand-light-green transition">
-                        Salvar Alteração
+                    <button type="submit" className="bg-brand-green text-white px-4 py-2 rounded-lg hover:bg-brand-light-green">Salvar</button>
+                </div>
+            </form>
+        </ModalWrapper>
+    )
+}
+
+const LogQualityModal: React.FC = () => {
+    const { looms, logQualityEntry, closeModal } = useAppContext();
+    const [loomId, setLoomId] = useState('');
+    const [residueKg, setResidueKg] = useState('');
+    const [offSpecFabricMeters, setOffSpecFabricMeters] = useState('');
+    const [notes, setNotes] = useState('');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if(!loomId) {
+            alert("Por favor, selecione um tear.");
+            return;
+        }
+        logQualityEntry({
+            loomId,
+            residueKg: parseFloat(residueKg) || 0,
+            offSpecFabricMeters: parseFloat(offSpecFabricMeters) || 0,
+            notes,
+        });
+    }
+    
+    return (
+        <ModalWrapper title="Lançamento de Qualidade">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Tear</label>
+                    <select value={loomId} onChange={e => setLoomId(e.target.value)} className="mt-1 p-2 w-full border rounded-md bg-white" required>
+                        <option value="">Selecione...</option>
+                        {looms.map(l => <option key={l.id} value={l.id}>{l.code}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Resíduos (kg)</label>
+                    <input type="number" step="any" value={residueKg} onChange={e => setResidueKg(e.target.value)} className="mt-1 p-2 w-full border rounded-md" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Tecido Fora de Especificação (m)</label>
+                    <input type="number" step="any" value={offSpecFabricMeters} onChange={e => setOffSpecFabricMeters(e.target.value)} className="mt-1 p-2 w-full border rounded-md" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Observações</label>
+                    <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} className="mt-1 p-2 w-full border rounded-md" />
+                </div>
+                 <div className="flex justify-end pt-2">
+                    <button type="submit" className="bg-brand-green text-white px-4 py-2 rounded-lg hover:bg-brand-light-green">Salvar Lançamento</button>
+                </div>
+            </form>
+        </ModalWrapper>
+    );
+}
+
+const LogITHModal: React.FC = () => {
+    const { modal, logITHIntervention, settings } = useAppContext();
+    const { loomId } = modal.data;
+
+    const handleReasonClick = (reasonId: string) => {
+        logITHIntervention(loomId, reasonId);
+    }
+    
+    return (
+        <ModalWrapper title="Registrar Microparada (ITH)" size="2xl">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {settings.ithStopReasons.map(reason => (
+                    <button 
+                        key={reason.id} 
+                        onClick={() => handleReasonClick(reason.id)}
+                        className="p-4 border rounded-lg text-left hover:bg-gray-100 transition"
+                    >
+                        <span className="font-bold text-gray-800">{reason.code}</span>
+                        <p className="text-sm text-gray-600">{reason.description}</p>
                     </button>
+                ))}
+            </div>
+        </ModalWrapper>
+    )
+}
+
+const AddEditITHReasonModal: React.FC = () => {
+    const { modal, addIthStopReason, updateIthStopReason } = useAppContext();
+    const { reason, isEditing } = modal.data;
+    const [code, setCode] = useState(isEditing ? reason.code : '');
+    const [description, setDescription] = useState(isEditing ? reason.description : '');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (isEditing) {
+            updateIthStopReason({ ...reason, code, description });
+        } else {
+            addIthStopReason({ code, description });
+        }
+    }
+    
+    return (
+        <ModalWrapper title={isEditing ? 'Editar Causa de ITH' : 'Adicionar Causa de ITH'}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium">Código</label>
+                    <input type="text" value={code} onChange={e => setCode(e.target.value)} className="mt-1 p-2 w-full border rounded-md" required autoFocus />
+                </div>
+                 <div>
+                    <label className="block text-sm font-medium">Descrição</label>
+                    <input type="text" value={description} onChange={e => setDescription(e.target.value)} className="mt-1 p-2 w-full border rounded-md" required />
+                </div>
+                <div className="flex justify-end pt-2">
+                    <button type="submit" className="bg-brand-green text-white px-4 py-2 rounded-lg hover:bg-brand-light-green">Salvar</button>
                 </div>
             </form>
         </ModalWrapper>
     );
 };
 
+const EditITHInterventionModal: React.FC = () => {
+    const { modal, looms, settings, updateITHIntervention } = useAppContext();
+    const intervention = modal.data.intervention as ITHIntervention;
+    const [reasonId, setReasonId] = useState(intervention.reasonId);
+    
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        updateITHIntervention({ ...intervention, reasonId });
+    };
 
+    const loomCode = looms.find(l => l.id === intervention.loomId)?.code || 'N/A';
+    
+    return (
+         <ModalWrapper title={`Editar ITH - ${loomCode}`}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                 <div>
+                    <label className="block text-sm font-medium">Causa</label>
+                    <select value={reasonId} onChange={e => setReasonId(e.target.value)} className="mt-1 p-2 w-full border rounded-md bg-white">
+                        {settings.ithStopReasons.map(r => <option key={r.id} value={r.id}>{r.code} - {r.description}</option>)}
+                    </select>
+                </div>
+                <div className="flex justify-end pt-2">
+                    <button type="submit" className="bg-brand-green text-white px-4 py-2 rounded-lg hover:bg-brand-light-green">Salvar</button>
+                </div>
+            </form>
+        </ModalWrapper>
+    )
+}
+
+const AddEditUserModal: React.FC = () => {
+    const { modal, addUser, updateUser, closeModal } = useAppContext();
+    const user = modal.data?.user as User | undefined;
+    const [username, setUsername] = useState(user?.username || '');
+    const [password, setPassword] = useState('');
+    const [role, setRole] = useState<UserRole>(user?.role || 'viewer');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!username.trim() || (!user && !password.trim())) {
+            alert('Usuário e senha são obrigatórios.');
+            return;
+        }
+
+        if (user) {
+            updateUser(user.id, username, role, password || undefined);
+        } else {
+            addUser(username, role, password);
+        }
+    };
+    
+    return (
+        <ModalWrapper title={user ? "Editar Usuário" : "Adicionar Usuário"}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium">Nome de Usuário</label>
+                    <input type="text" value={username} onChange={e => setUsername(e.target.value)} className="mt-1 p-2 w-full border rounded-md" required autoFocus />
+                </div>
+                 <div>
+                    <label className="block text-sm font-medium">Senha</label>
+                    <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="mt-1 p-2 w-full border rounded-md" placeholder={user ? "Deixe em branco para não alterar" : ""} required={!user} />
+                </div>
+                 <div>
+                    <label className="block text-sm font-medium">Nível de Acesso</label>
+                    <select value={role} onChange={e => setRole(e.target.value as UserRole)} className="mt-1 p-2 w-full border rounded-md bg-white">
+                        <option value="admin">Administrador</option>
+                        <option value="viewer">Visualizador</option>
+                    </select>
+                </div>
+                <div className="flex justify-end pt-2">
+                    <button type="submit" className="bg-brand-green text-white px-4 py-2 rounded-lg hover:bg-brand-light-green">Salvar</button>
+                </div>
+            </form>
+        </ModalWrapper>
+    );
+};
+
+// Fix: Added the main ModalManager component and default export.
 const ModalManager: React.FC = () => {
-  const { modal } = useAppContext();
+    const { modal } = useAppContext();
+    if (!modal.type) return null;
 
-  if (!modal.type) {
-    return null;
-  }
-
-  switch (modal.type) {
-    case 'LOG_PRODUCTION':
-        return <LogProductionModal />;
-    case 'MANAGE_MAINTENANCE':
-        return <StopModal type="maintenance" />;
-    case 'MANAGE_INTERVENTION':
-        return <StopModal type="operational" />;
-    case 'START_SHIFT':
-        return <StartShiftModal />;
-    case 'END_SHIFT':
-        return <EndShiftModal />;
-    case 'ADD_EDIT_OPERATOR':
-        return <AddEditOperatorModal />;
-    case 'ADD_EDIT_PRODUCT':
-        return <AddEditProductModal />;
-    case 'LOOM_DETAILS':
-        return <LoomDetailsModal />;
-    case 'EDIT_PRODUCTION_ENTRY':
-        return <EditProductionEntryModal />;
-    case 'PDF_PREVIEW':
-        return <PDFPreviewModal />;
-    default:
-      return null;
-  }
+    switch (modal.type) {
+        case 'LOG_PRODUCTION':
+            return <LogProductionModal />;
+        case 'MANAGE_MAINTENANCE':
+            return <StopModal type="maintenance" />;
+        case 'MANAGE_INTERVENTION':
+            return <StopModal type="operational" />;
+        case 'START_SHIFT':
+            return <StartShiftModal />;
+        case 'END_SHIFT':
+            return <EndShiftModal />;
+        case 'ADD_EDIT_OPERATOR':
+            return <AddEditOperatorModal />;
+        case 'ADD_EDIT_PRODUCT':
+            return <AddEditProductModal />;
+        case 'LOOM_DETAILS':
+            return <LoomDetailsModal />;
+        case 'EDIT_PRODUCTION_ENTRY':
+            return <EditProductionEntryModal />;
+        case 'PDF_PREVIEW':
+            return <PDFPreviewModal />;
+        case 'LOG_QUALITY':
+            return <LogQualityModal />;
+        case 'LOG_ITH':
+            return <LogITHModal />;
+        case 'FULLSCREEN_LOOM_CARD':
+            return <FullScreenLoomCardModal />;
+        case 'ADD_EDIT_ITH_REASON':
+            return <AddEditITHReasonModal />;
+        case 'EDIT_ITH_INTERVENTION':
+            return <EditITHInterventionModal />;
+        case 'ADD_EDIT_USER':
+            return <AddEditUserModal />;
+        case 'LOOM_HISTORY_CHART':
+            return null; // No component specified for this modal type
+        default:
+            return null;
+    }
 };
 
 export default ModalManager;

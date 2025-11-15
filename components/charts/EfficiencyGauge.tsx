@@ -2,9 +2,10 @@ import React from 'react';
 
 interface EfficiencyGaugeProps {
   efficiency: number;
+  valueFontSize?: number;
 }
 
-const EfficiencyGauge: React.FC<EfficiencyGaugeProps> = ({ efficiency }) => {
+const EfficiencyGauge: React.FC<EfficiencyGaugeProps> = ({ efficiency, valueFontSize = 18 }) => {
   const getStatusColor = () => {
     if (efficiency >= 90) return '#16a34a'; // green-600
     if (efficiency >= 81) return '#facc15'; // yellow-400
@@ -46,7 +47,7 @@ const EfficiencyGauge: React.FC<EfficiencyGaugeProps> = ({ efficiency }) => {
           x="50"
           y="45"
           textAnchor="middle"
-          fontSize="18"
+          fontSize={valueFontSize}
           fontWeight="bold"
           fill={getStatusColor()}
         >

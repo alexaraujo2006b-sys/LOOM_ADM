@@ -56,6 +56,13 @@ const LoomDetailsModal: React.FC = () => {
         return { product, operator, hourlyProduction: hourlyProd, stops: allStops };
     }, [loom, activeShift, products, operators]);
 
+    const hourlyProductionGoal = useMemo(() => {
+        if (product && product.threadDensity > 0) {
+            return (product.standardRpm * 60) / (product.threadDensity * 10);
+        }
+        return 0;
+    }, [product]);
+
 
     const handleGenerateAnalysis = async () => {
         if (!loom || !product || !activeShift) return;
@@ -72,7 +79,7 @@ const LoomDetailsModal: React.FC = () => {
 ### Dados do Tear:
 - **Código:** ${loom.code}
 - **Produto:** ${product.name}
-- **Meta de Produção por Hora:** ${product.hourlyProductionGoal} m/h
+- **Meta de Produção por Hora:** ${hourlyProductionGoal.toFixed(2)} m/h
 
 ### Produção por Hora:
 ${hourlyDataString}
@@ -126,7 +133,7 @@ Dê 2 a 3 sugestões práticas e diretas para melhorar a eficiência deste tear 
                     </div>
                     <div>
                         <p className="text-sm text-gray-500">Meta por Hora</p>
-                        <p className="font-semibold text-gray-800">{product?.hourlyProductionGoal || 'N/A'} m/h</p>
+                        <p className="font-semibold text-gray-800">{hourlyProductionGoal.toFixed(2) || 'N/A'} m/h</p>
                     </div>
                 </div>
 

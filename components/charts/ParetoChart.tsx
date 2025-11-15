@@ -2,27 +2,35 @@ import React from 'react';
 
 interface ParetoData {
     reason: string;
-    duration: number; // in minutes
+    value: number; 
     percentage: number;
     cumulative: number;
 }
 
 interface ParetoChartProps {
     data: ParetoData[];
+    yAxisLabel?: string;
+    barColor?: string;
+    hoverBarColor?: string;
 }
 
-const ParetoChart: React.FC<ParetoChartProps> = ({ data }) => {
-    const maxDuration = Math.max(...data.map(d => d.duration), 0);
+const ParetoChart: React.FC<ParetoChartProps> = ({ 
+    data, 
+    yAxisLabel = "Valor",
+    barColor = 'bg-blue-500',
+    hoverBarColor = 'hover:bg-blue-700'
+}) => {
+    const maxValue = Math.max(...data.map(d => d.value), 0);
 
     return (
         <div className="w-full h-[500px] bg-gray-50 p-4 sm:p-6 rounded-lg">
             <div className="relative flex justify-around items-end w-full h-full border-l border-b border-gray-300">
-                {/* Y-Axis Labels (Duration) */}
-                <div className="absolute -left-12 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-500">
-                    <span>{maxDuration.toFixed(0)} min</span>
-                    <span>{(maxDuration * 0.75).toFixed(0)}</span>
-                    <span>{(maxDuration * 0.5).toFixed(0)}</span>
-                    <span>{(maxDuration * 0.25).toFixed(0)}</span>
+                {/* Y-Axis Labels (Value) */}
+                <div className="absolute -left-14 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-500 w-12 text-right">
+                    <span>{maxValue.toFixed(0)} {yAxisLabel.substring(0,3)}</span>
+                    <span>{(maxValue * 0.75).toFixed(0)}</span>
+                    <span>{(maxValue * 0.5).toFixed(0)}</span>
+                    <span>{(maxValue * 0.25).toFixed(0)}</span>
                     <span className="mb-[25px]">0</span>
                 </div>
                 
@@ -36,14 +44,14 @@ const ParetoChart: React.FC<ParetoChartProps> = ({ data }) => {
                 </div>
                 
                 {/* Chart Bars */}
-                {data.map((item, index) => (
+                {data.map((item) => (
                     <div key={item.reason} className="flex-1 flex flex-col items-center justify-end px-1 group">
                         <div 
-                            className="w-full bg-blue-500 hover:bg-blue-700 transition-colors"
-                            style={{ height: `${maxDuration > 0 ? (item.duration / maxDuration) * 100 : 0}%` }}
+                            className={`w-1/2 ${barColor} ${hoverBarColor} transition-colors`}
+                            style={{ height: `${maxValue > 0 ? (item.value / maxValue) * 100 : 0}%` }}
                         >
                             <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs font-semibold text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">
-                                {item.duration.toFixed(0)} min
+                                {item.value.toFixed(0)}
                             </span>
                         </div>
                         <span className="text-xs text-center text-gray-600 mt-2 transform -rotate-15 origin-center">{item.reason}</span>
@@ -73,8 +81,8 @@ const ParetoChart: React.FC<ParetoChartProps> = ({ data }) => {
             </div>
              <div className="flex justify-center items-center mt-6 space-x-6 text-sm">
                 <div className="flex items-center">
-                    <div className="w-4 h-4 bg-blue-500 rounded-sm mr-2"></div>
-                    <span>Duração da Parada (min)</span>
+                    <div className={`w-4 h-4 ${barColor} rounded-sm mr-2`}></div>
+                    <span>{yAxisLabel}</span>
                 </div>
                 <div className="flex items-center">
                     <div className="w-4 h-1 border-t-2 border-red-500 mr-2"></div>

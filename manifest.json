@@ -1,0 +1,29 @@
+{
+  "name": "Controle de Produção de Teares",
+  "short_name": "Teares App",
+  "description": "Um aplicativo web interativo para controle diário de produção de uma linha de teares, permitindo entrada de dados, cálculos automáticos de eficiência e geração de relatórios.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#047857",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

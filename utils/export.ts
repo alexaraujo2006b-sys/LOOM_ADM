@@ -1,6 +1,5 @@
-import { ShiftRecord, Loom, Operator, Product, ActiveShift, ProductionEntry } from '../types';
+import { ShiftRecord, Loom, Operator, Product, ActiveShift, ProductionEntry, Settings } from '../types';
 import { formatDuration } from './time';
-import { PRACAFE_LOGO_BASE64 } from './logo';
 
 declare const jsPDF: any;
 declare const XLSX: any;
@@ -28,11 +27,17 @@ const calculateTotalProduction = (loomId: string, productionEntries: ProductionE
     return Math.max(0, lastReading - firstReading);
 }
 
-const addHeaderToPDF = (doc: any, title: string) => {
+const addHeaderToPDF = (doc: any, title: string, settings: Settings) => {
     const pageWidth = doc.internal.pageSize.width;
     
     // Logo
-    doc.addImage(PRACAFE_LOGO_BASE64, 'SVG', 14, 8, 20, 20);
+    if (settings.companyLogo) {
+        try {
+            doc.addImage(settings.companyLogo, 'PNG', 14, 8, 20, 20); // Assume PNG/JPEG/etc.
+        } catch (e) {
+            console.error("Failed to add logo to PDF:", e);
+        }
+    }
 
     // Title
     doc.setFontSize(16);
@@ -42,7 +47,7 @@ const addHeaderToPDF = (doc: any, title: string) => {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100);
-    doc.text("Sistema Pracafé de gestão da produção", pageWidth / 2, 25, { align: 'center' });
+    doc.text(settings.companyName, pageWidth / 2, 25, { align: 'center' });
 
     // Reset styles
     doc.setFont('helvetica', 'normal');
@@ -52,10 +57,10 @@ const addHeaderToPDF = (doc: any, title: string) => {
 }
 
 
-export const exportToPDF = (record: ShiftRecord, looms: Loom[], operators: Operator[], products: Product[]) => {
+export const exportToPDF = (record: ShiftRecord, looms: Loom[], operators: Operator[], products: Product[], settings: Settings) => {
     const { jsPDF } = (window as any).jspdf;
     const doc = new jsPDF();
-    let y = addHeaderToPDF(doc, "Relatório de Turno");
+    let y = addHeaderToPDF(doc, "Relatório de Turno", settings);
 
     const pageHeight = doc.internal.pageSize.height;
 
@@ -148,7 +153,7 @@ export const exportToPDF = (record: ShiftRecord, looms: Loom[], operators: Opera
 };
 
 
-export const exportToExcel = (record: ShiftRecord | ActiveShift, looms: Loom[], operators: Operator[], products: Product[], fileName: string) => {
+export const exportToExcel = (record: ShiftRecord | ActiveShift, looms: Loom[], operators: Operator[], products: Product[], settings: Settings, fileName: string) => {
     const wb = XLSX.utils.book_new();
     
     let totalShiftProduction = 0;
@@ -199,6 +204,36 @@ export const exportToExcel = (record: ShiftRecord | ActiveShift, looms: Loom[], 
      const wsStops = XLSX.utils.json_to_sheet(stopsData);
     XLSX.utils.book_append_sheet(wb, wsStops, "Paradas");
 
+    // ITH Losses Sheet
+    if (record.ithInterventions && record.ithInterventions.length > 0) {
+        const ithLossesData = record.ithInterventions.map(ith => {
+            const loom = looms.find(l => l.id === ith.loomId);
+            const product = products.find(p => p.id === loom?.productId);
+            const reason = settings.ithStopReasons.find(r => r.id === ith.reasonId);
+            
+            const hourlyGoal = (product && product.threadDensity > 0)
+                ? (product.standardRpm * 60) / (product.threadDensity * 10)
+                : 0;
+
+            const lossMeters = (1 * hourlyGoal) / 60; // Assuming 1 min loss
+            const lossKg = (product && product.fabricWidthM && product.grammageM2)
+                ? (lossMeters * product.fabricWidthM * product.grammageM2) / 1000
+                : 0;
+            
+            return {
+                'Horário': new Date(ith.timestamp).toLocaleString('pt-BR'),
+                'Tear': loom?.code || 'N/A',
+                'Cód. Causa': reason?.code || 'N/A',
+                'Descrição Causa': reason?.description || 'N/A',
+                'Perda (m)': lossMeters.toFixed(2),
+                'Perda (kg)': lossKg.toFixed(2),
+            };
+        }).sort((a,b) => a['Tear'].localeCompare(b['Tear']) || a['Horário'].localeCompare(b['Horário']));
+        
+        const wsIthLosses = XLSX.utils.json_to_sheet(ithLossesData);
+        XLSX.utils.book_append_sheet(wb, wsIthLosses, "Perdas ITH");
+    }
+
     XLSX.writeFile(wb, `${fileName.replace(/[/ ]/g, "_")}.xlsx`);
 }
 
@@ -206,12 +241,13 @@ export const exportOperatorReportToPDF = (
     operatorName: string,
     date: string,
     entries: { time: string, loomCode: string, reading: number, produced: number }[],
-    totalProduced: number
+    totalProduced: number,
+    settings: Settings,
 ) => {
     const { jsPDF } = (window as any).jspdf;
     const doc = new jsPDF();
     const title = "Relatório Individual de Produção";
-    let y = addHeaderToPDF(doc, title);
+    let y = addHeaderToPDF(doc, title, settings);
 
     doc.setFontSize(12);
     doc.text(`Operador: ${operatorName}`, 14, y);

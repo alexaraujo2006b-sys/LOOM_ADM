@@ -1,10 +1,9 @@
 import React from 'react';
 import { useAppContext } from '../context/AppContext';
 import { ModalWrapper } from './ModalManager';
-import { PRACAFE_LOGO_BASE64 } from '../utils/logo';
 
 const PDFPreviewModal: React.FC = () => {
-    const { modal: { data } } = useAppContext();
+    const { modal: { data }, settings } = useAppContext();
     const { operatorName, date, entries, totalProduced } = data;
 
     return (
@@ -13,10 +12,10 @@ const PDFPreviewModal: React.FC = () => {
                 <div className="max-w-4xl mx-auto bg-white p-10 shadow-lg">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-8 pb-4 border-b">
-                        <img src={PRACAFE_LOGO_BASE64} alt="Pracafé Logo" className="h-14 w-14" />
+                        {settings.companyLogo && <img src={settings.companyLogo} alt="Company Logo" className="h-14 w-14 object-contain" />}
                         <div className="text-center">
                             <h2 className="text-2xl font-bold text-gray-800">Relatório Individual de Produção</h2>
-                            <p className="text-sm text-gray-500">Sistema Pracafé de gestão da produção</p>
+                            <p className="text-sm text-gray-500">{settings.companyName}</p>
                         </div>
                         <div className="w-14"></div> {/* Spacer */}
                     </div>

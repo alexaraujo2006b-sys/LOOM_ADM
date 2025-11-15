@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Product } from '../types';
@@ -24,6 +23,13 @@ const Products: React.FC = () => {
     }
   };
 
+  const calculateGoal = (product: Product) => {
+    if (product.threadDensity > 0) {
+        return (product.standardRpm * 60) / (product.threadDensity * 10);
+    }
+    return 0;
+  };
+
   return (
     <div className="p-4 space-y-6">
       <div className="flex justify-between items-center">
@@ -37,7 +43,10 @@ const Products: React.FC = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome do Produto</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gramatura (g/m²)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Largura (m)</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Meta (m/h)</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
             </tr>
@@ -45,8 +54,11 @@ const Products: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {products.map(p => (
               <tr key={p.id}>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{p.productCode}</td>
                 <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{p.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{p.hourlyProductionGoal} m/h</td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{p.grammageM2}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{p.fabricWidthM}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700 font-bold">{calculateGoal(p).toFixed(2)} m/h</td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
                   <button onClick={() => handleEdit(p)} className="text-indigo-600 hover:text-indigo-900"><EditIcon className="w-5 h-5"/></button>
                   <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:text-red-900"><TrashIcon className="w-5 h-5"/></button>

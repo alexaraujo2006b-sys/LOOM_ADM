@@ -41,39 +41,60 @@ const HourlyProductionChart: React.FC<HourlyProductionChartProps> = ({ loomId })
   }, [loomId, activeShift, products, looms]);
 
   const { hourlyProduction, product } = chartData;
-  const hourlyGoal = product?.hourlyProductionGoal || 0;
-  const maxProd = Math.max(...hourlyProduction.map(h => h.production), hourlyGoal) * 1.1; // Add 10% padding
+  
+  const hourlyGoal = useMemo(() => {
+    if (product && product.threadDensity > 0) {
+      return (product.standardRpm * 60) / (product.threadDensity * 10);
+    }
+    return 0;
+  }, [product]);
+
+  const maxProd = Math.max(...hourlyProduction.map(h => h.production), hourlyGoal) * 1.15 || 10; // Add 15% padding
 
   if (hourlyProduction.length === 0) {
     return <div className="text-center text-sm text-gray-500 py-10">Sem dados de produção horária.</div>;
   }
 
+  const yAxisLabels = [0, 0.25, 0.5, 0.75, 1].map(p => ({
+    value: Math.round(maxProd * p),
+    position: `${p * 100}%`
+  }));
+
   return (
-    <div className="p-2 space-y-2 relative h-[150px] flex flex-col justify-end">
-      <div className="flex items-end justify-around h-full border-l border-b border-gray-200 pl-2">
-        {hourlyProduction.map(({ hour, production }) => (
-          <div key={hour} className="flex flex-col items-center w-full text-center group" style={{ height: '100%'}}>
-             <div className="h-full flex items-end">
-                <div 
-                  className="w-4/5 bg-blue-400 hover:bg-blue-600 transition-colors relative"
-                  style={{ height: `${maxProd > 0 ? (production / maxProd) * 100 : 0}%` }}
-                  title={`${production.toFixed(0)}m`}
-                >
-                  <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-xs font-semibold text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">{production.toFixed(0)}</span>
-                </div>
-             </div>
-            <span className="text-xs text-gray-500 mt-1">{hour.split(':')[0]}h</span>
-          </div>
+    <div className="relative h-[160px] flex flex-col justify-end pl-8 pr-4">
+        {/* Y-Axis Labels and Grid Lines */}
+        {yAxisLabels.map(label => (
+            <div key={label.value} className="absolute left-8 right-0 flex items-center" style={{ bottom: `calc(${label.position} + 18px)`}}>
+                <span className="absolute -left-8 text-xs text-gray-400 w-7 text-right">{label.value}</span>
+                <div className="w-full border-t border-gray-200 border-dashed"></div>
+            </div>
         ))}
-      </div>
-      {hourlyGoal > 0 && maxProd > 0 && (
-        <div 
-          className="absolute left-0 right-0 border-t border-dashed border-red-500" 
-          style={{ bottom: `${(hourlyGoal / maxProd) * 100}%`, transform: 'translateY(-18px)' }}
-        >
-            <span className="absolute -top-2.5 right-0 text-xs text-red-500 bg-white px-1 rounded">Meta</span>
+
+        {/* Chart Bars */}
+        <div className="flex items-end justify-around h-full border-b border-gray-300">
+            {hourlyProduction.map(({ hour, production }) => (
+            <div key={hour} className="flex flex-col items-center w-full text-center group h-full justify-end">
+                <div 
+                    className="w-1/2 bg-blue-400 hover:bg-blue-600 transition-colors relative"
+                    style={{ height: `${maxProd > 0 ? (production / maxProd) * 100 : 0}%` }}
+                    title={`${production.toFixed(0)}m`}
+                >
+                    <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-xs font-semibold text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">{production.toFixed(0)}</span>
+                </div>
+                <span className="text-xs text-gray-500 mt-1">{hour.split(':')[0]}h</span>
+            </div>
+            ))}
         </div>
-      )}
+
+        {/* Goal Line */}
+        {hourlyGoal > 0 && maxProd > 0 && (
+            <div 
+            className="absolute left-8 right-0 border-t-2 border-dashed border-red-500" 
+            style={{ bottom: `calc(${(hourlyGoal / maxProd) * 100}% + 18px)` }}
+            >
+                <span className="absolute -top-2 right-0 text-xs text-red-500 bg-white px-1 rounded">Meta</span>
+            </div>
+        )}
     </div>
   );
 };

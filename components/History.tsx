@@ -1,11 +1,12 @@
 
+
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { ShiftRecord } from '../types';
 import { exportToExcel, exportToPDF } from '../utils/export';
 
 const History: React.FC = () => {
-  const { shiftHistory, looms, operators, products } = useAppContext();
+  const { shiftHistory, looms, operators, products, settings } = useAppContext();
   const [filter, setFilter] = useState({ date: '', operator: '' });
 
   const calculateTotalProduction = (record: ShiftRecord): number => {
@@ -28,11 +29,11 @@ const History: React.FC = () => {
   }).sort((a,b) => b.userStartTime - a.userStartTime), [shiftHistory, filter]);
 
   const handleExportPDF = (record: ShiftRecord) => {
-    exportToPDF(record, looms, operators, products);
+    exportToPDF(record, looms, operators, products, settings);
   }
 
   const handleExportExcel = (record: ShiftRecord) => {
-    exportToExcel(record, looms, operators, products, `Turno_${record.shiftName}_${new Date(record.userStartTime).toLocaleDateString('pt-BR')}`);
+    exportToExcel(record, looms, operators, products, settings, `Turno_${record.shiftName}_${new Date(record.userStartTime).toLocaleDateString('pt-BR')}`);
   }
 
   return (

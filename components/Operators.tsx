@@ -36,7 +36,9 @@ const Operators: React.FC = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matrícula</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Função</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Turno</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
             </tr>
@@ -44,7 +46,9 @@ const Operators: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {operators.map(op => (
               <tr key={op.id}>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{op.employeeId}</td>
                 <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{op.name}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{op.role}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-700">{op.shiftName}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
                   <button onClick={() => handleEdit(op)} className="text-indigo-600 hover:text-indigo-900"><EditIcon className="w-5 h-5"/></button>
