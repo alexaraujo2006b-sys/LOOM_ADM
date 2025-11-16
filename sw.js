@@ -1,21 +1,9 @@
-const CACHE_NAME = 'teares-app-cache-v4';
+const CACHE_NAME = 'teares-app-cache-v5';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/index.tsx',
   '/manifest.json',
-  '/icon.svg',
-  // Adicionando os assets de CDN para suporte offline
-  'https://cdn.tailwindcss.com',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-  // Adicionando assets do AISTUDIO CDN
-  'https://aistudiocdn.com/react@^19.2.0',
-  'https://aistudiocdn.com/react-dom@^19.2.0/client',
-  'https://aistudiocdn.com/react@^19.2.0/jsx-runtime',
-  'https://aistudiocdn.com/@google/genai@^1.29.0',
-  'https://aistudiocdn.com/idb-keyval@^6.2.2'
+  '/icon.svg'
 ];
 
 self.addEventListener('install', event => {

@@ -1,8 +1,8 @@
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import { ShiftRecord, Loom, Operator, Product, ActiveShift, ProductionEntry, Settings } from '../types';
 import { formatDuration } from './time';
-
-declare const jsPDF: any;
-declare const XLSX: any;
 
 const getLoomInfo = (loomId: string, looms: Loom[], operators: Operator[], products: Product[], shiftName: string) => {
     const loom = looms.find(l => l.id === loomId);
@@ -27,7 +27,7 @@ const calculateTotalProduction = (loomId: string, productionEntries: ProductionE
     return Math.max(0, lastReading - firstReading);
 }
 
-const addHeaderToPDF = (doc: any, title: string, settings: Settings) => {
+const addHeaderToPDF = (doc: jsPDF, title: string, settings: Settings) => {
     const pageWidth = doc.internal.pageSize.width;
     
     // Logo
@@ -58,7 +58,6 @@ const addHeaderToPDF = (doc: any, title: string, settings: Settings) => {
 
 
 export const exportToPDF = (record: ShiftRecord, looms: Loom[], operators: Operator[], products: Product[], settings: Settings) => {
-    const { jsPDF } = (window as any).jspdf;
     const doc = new jsPDF();
     let y = addHeaderToPDF(doc, "Relatório de Turno", settings);
 
@@ -88,13 +87,13 @@ export const exportToPDF = (record: ShiftRecord, looms: Loom[], operators: Opera
         return [info.code, info.product, info.operator, totalProduction.toFixed(2) + ' m'];
     });
 
-    doc.autoTable({
+    (doc as any).autoTable({
         startY: y,
         head: [['Tear', 'Produto', 'Operador', 'Produção Total']],
         body: productionBody,
         theme: 'striped'
     });
-    y = doc.autoTable.previous.finalY + 10;
+    y = (doc as any).autoTable.previous.finalY + 10;
     checkPageEnd();
     
     if (record.maintenance.length > 0) {
@@ -102,7 +101,7 @@ export const exportToPDF = (record: ShiftRecord, looms: Loom[], operators: Opera
         doc.text("Paradas de Manutenção", 14, y);
         y += 6;
         checkPageEnd();
-        doc.autoTable({
+        (doc as any).autoTable({
             startY: y,
             head: [['Tear', 'Motivo', 'Início', 'Fim', 'Duração', 'Obs']],
             body: record.maintenance.map(m => {
@@ -111,7 +110,7 @@ export const exportToPDF = (record: ShiftRecord, looms: Loom[], operators: Opera
             }),
             theme: 'striped'
         });
-        y = doc.autoTable.previous.finalY + 10;
+        y = (doc as any).autoTable.previous.finalY + 10;
         checkPageEnd();
     }
    
@@ -120,7 +119,7 @@ export const exportToPDF = (record: ShiftRecord, looms: Loom[], operators: Opera
         doc.text("Paradas Operacionais", 14, y);
         y += 6;
         checkPageEnd();
-        doc.autoTable({
+        (doc as any).autoTable({
             startY: y,
             head: [['Tear', 'Motivo', 'Início', 'Fim', 'Duração', 'Obs']],
             body: record.interventions.map(i => {
@@ -129,7 +128,7 @@ export const exportToPDF = (record: ShiftRecord, looms: Loom[], operators: Opera
             }),
             theme: 'striped'
         });
-        y = doc.autoTable.previous.finalY + 10;
+        y = (doc as any).autoTable.previous.finalY + 10;
         checkPageEnd();
     }
 
@@ -244,7 +243,6 @@ export const exportOperatorReportToPDF = (
     totalProduced: number,
     settings: Settings,
 ) => {
-    const { jsPDF } = (window as any).jspdf;
     const doc = new jsPDF();
     const title = "Relatório Individual de Produção";
     let y = addHeaderToPDF(doc, title, settings);
@@ -266,7 +264,7 @@ export const exportOperatorReportToPDF = (
         entry.produced > 0 ? `+${entry.produced.toFixed(2)} m` : '-'
     ]);
 
-    doc.autoTable({
+    (doc as any).autoTable({
         startY: y,
         head: [['Horário', 'Tear', 'Leitura (m)', 'Produzido na Hora']],
         body: body,
