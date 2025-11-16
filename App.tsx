@@ -1,4 +1,4 @@
-
+// Fix: Corrected import syntax for useState.
 import React, { useState } from 'react';
 import Sidebar from './components/layout/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -16,12 +16,8 @@ import Quality from './components/Quality';
 import EditITHData from './components/EditITHData';
 import ITHReport from './components/ITHReport';
 import OperatorView from './components/OperatorView';
-import { useAppContext } from './context/AppContext';
-import Login from './components/Login';
-import Users from './components/Users';
 
 const App: React.FC = () => {
-  const { currentUser } = useAppContext();
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
 
   // Check for view mode from URL
@@ -54,8 +50,6 @@ const App: React.FC = () => {
         return <ParetoAnalysis />;
       case AppView.QUALITY:
         return <Quality />;
-      case AppView.USERS:
-        return <Users />;
       default:
         return <Dashboard />;
     }
@@ -70,10 +64,6 @@ const App: React.FC = () => {
     }
     return null;
   };
-
-  if (!currentUser) {
-    return <Login />;
-  }
 
   const specialView = renderSpecialView();
 

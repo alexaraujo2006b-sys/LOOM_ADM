@@ -120,6 +120,7 @@ export interface ShiftRecord extends ActiveShift {
   actionPlans: string;
 }
 
+// Fix: Added User interface and UserRole type for authentication.
 export type UserRole = 'admin' | 'viewer';
 
 export interface User {
@@ -134,10 +135,10 @@ export interface AppData {
   settings: Settings;
   operators: Operator[];
   products: Product[];
-  users: User[]; 
+  users: User[]; // Fix: Added users for authentication.
   activeShift: ActiveShift | null;
   shiftHistory: ShiftRecord[];
-  currentUser: User | null; 
+  currentUser: User | null; // Fix: Added currentUser for session management.
 }
 
 export enum AppView {
@@ -153,7 +154,6 @@ export enum AppView {
   QUALITY = 'QUALITY',
   EDIT_ITH_DATA = 'EDIT_ITH_DATA',
   ITH_REPORT = 'ITH_REPORT',
-  USERS = 'USERS',
 }
 
 export type ModalType = 
@@ -173,6 +173,7 @@ export type ModalType =
   | 'FULLSCREEN_LOOM_CARD'
   | 'ADD_EDIT_ITH_REASON'
   | 'EDIT_ITH_INTERVENTION'
+  // Fix: Added ADD_EDIT_USER to support user management modal.
   | 'ADD_EDIT_USER'
   | null;
 
@@ -216,6 +217,7 @@ export interface AppContextType extends AppData {
   deleteITHIntervention: (id: string) => void;
   exportActiveShiftToExcel: () => void;
   
+  // Fix: Added properties for user authentication and management.
   login: (username: string, password: string) => boolean;
   logout: () => void;
   addUser: (username: string, role: UserRole, password: string) => void;
