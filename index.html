@@ -1,58 +1,19 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Controle de Produção de Teares BIG BAGS</title>
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#047857" />
-    <link rel="apple-touch-icon" href="/icon.svg" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              'brand-green': '#047857',
-              'brand-light-green': '#059669',
-              'brand-accent': '#34D399',
-            },
-          },
-        },
-      }
-    </script>
 <script type="importmap">
 {
   "imports": {
-    "idb-keyval": "https://aistudiocdn.com/idb-keyval@^6.2.2",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "vite": "https://aistudiocdn.com/vite@^7.2.2",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "jspdf": "https://aistudiocdn.com/jspdf@^3.0.3",
     "jspdf-autotable": "https://aistudiocdn.com/jspdf-autotable@^5.0.2",
     "xlsx": "https://aistudiocdn.com/xlsx@^0.18.5",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.1",
+    "idb-keyval": "https://aistudiocdn.com/idb-keyval@^6.2.2",
+    "vite": "https://aistudiocdn.com/vite@^7.2.2",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "tailwindcss": "https://aistudiocdn.com/tailwindcss@^4.1.17",
+    "next/": "https://aistudiocdn.com/next@^16.0.3/",
+    "next": "https://aistudiocdn.com/next@^16.0.3",
+    "@ducanh2912/next-pwa": "https://aistudiocdn.com/@ducanh2912/next-pwa@^10.2.9"
   }
 }
 </script>
-</head>
-  <body class="bg-gray-100">
-    <div id="root"></div>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-              console.log('ServiceWorker registration successful with scope: ', registration.scope);
-            })
-            .catch(err => {
-              console.log('ServiceWorker registration failed: ', err);
-            });
-        });
-      }
-    </script>
-    <script type="module" src="/index.tsx"></script>
-  </body>
-</html>
